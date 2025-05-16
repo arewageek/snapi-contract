@@ -1,0 +1,34 @@
+# GOALS
+
+## For Creators
+
+- Create task and fund reward pool //
+- End task and distribute reward
+- Delete task (only before start)
+- Create account
+- Get refund when min-treshhold is not achieved
+- Disqualify a raider
+
+## For Raiders
+
+- Claim reward
+
+## System Level
+
+- Register task participants
+- Reward task participants
+- Whitelist eligible participants
+- Refund creator when no participant
+- // Activate task only when participants cross a minimum treshhold
+- // Flag task participant
+- // Update minimum task participants
+- // flag and reactivate accounts
+
+## Public Level
+
+- // Get raider info
+- // Calculate average reward per point earned
+
+## Common Functions
+
+- // Create account

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-interface ISnapi {
+interface ISnapii {
 
     // ----------- EVENTS -----------
 
@@ -43,27 +43,72 @@ interface ISnapi {
     /// A task posted by a creator
     struct Task {
         address creator;
-        string contentLink;
+        string metadata;
         uint256 rewardPool;
         uint256 deadline;
         uint256 totalPoints;
+        uint256 totalRaiderCount;
         bool isActive;
     }
 
     /// Raider's engagement info
     struct Raider {
         uint256 points;
-        bool disqualified;
         bool rewardClaimed;
+        bool isFlagged;
+    }
+
+    // ------------------ ENUMS -----------
+    enum Role {
+        ADMIN,
+        MODERATOR,
+        CREATOR
+    }
+
+    /// Creator profile info
+    struct Creator {
+        address account;
+        uint8 tasksCreated;
+        uint256 totalAmountPaid;
+        bool isFlagged;
     }
 
     // ----------- CORE FUNCTIONS -----------
 
+    /// -------------------------
+    /// Common Functions
+    /// -------------------------
+
+    /// Create new account
+    function createAccount(Role _role, address _account) external;
+
+    /// -------------------------
+    /// Creator Functions
+    /// -------------------------
+
     /// Create a new engagement task
     function createTask(
-        string calldata contentLink,
-        uint256 durationInSeconds
+        string memory _taskMetadata
     ) external payable returns (uint256 taskId);
+
+    /// -------------------------
+    /// Raider Functions
+    /// -------------------------
+    
+    
+
+    /// -------------------------
+    /// System Level Functions
+    /// -------------------------
+
+    /// -------------------------
+    /// Public Level Functions
+    /// -------------------------
+
+    /// Get raider info for specific task
+    function getRaiderInfo(uint256 taskId, address raider) external view returns (Raider memory);
+
+
 
     /// Submit engagement points (from backend/oracle)
     function submitPoints(
@@ -82,19 +127,16 @@ interface ISnapi {
     /// Claim reward after task ends (if eligible)
     function claimReward(uint256 taskId) external;
 
-    /// Close the task manually if past deadline
+    /// Close the task manually (only when not active yet)
     function closeTask(uint256 taskId) external;
 
-    /// Refund leftover funds to creator (if no participation)
+    /// Refund leftover funds to creator (if participants don't cross a treshhold)
     function refund(uint256 taskId) external;
 
     // ----------- VIEW FUNCTIONS -----------
 
     /// Get basic info about a task
     function getTask(uint256 taskId) external view returns (Task memory);
-
-    /// Get raider’s performance for a task
-    function getRaiderInfo(uint256 taskId, address raider) external view returns (Raider memory);
 
     /// Calculate reward share for a raider (before claiming)
     function calculateReward(uint256 taskId, address raider) external view returns (uint256);
@@ -107,6 +149,7 @@ interface ISnapi {
 
 // ------------------ ERRORS ------------------
 
+error NotAuthorized();
 error NotTaskCreator();
 error InvalidTask();
 error TaskNotActive();
@@ -121,3 +164,6 @@ error RewardPoolEmpty();
 error InvalidETHDeposit();
 error UnauthorizedSubmitter();
 error ZeroPointsNotAllowed();
+
+// duplicate entry errors
+error DuplicateEntry();
