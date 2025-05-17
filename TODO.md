@@ -3,22 +3,22 @@
 ## For Creators
 
 - Create task and fund reward pool //
-- End task and distribute reward
-- Delete task (only before start)
-- Create account
+- // End task
+- // Delete task (only before start)
+- // register creator
 - Get refund when min-treshhold is not achieved
 - Disqualify a raider
 - // Register creator account
 
 ## For Raiders
 
-- Claim reward
+- // Claim reward
+- Complete task
 
 ## System Level
 
 - Register task participants
 - Reward task participants
-- Whitelist eligible participants
 - // Refund creator when no participant
 - // Activate task only when participants cross a minimum treshhold
 - // Flag task participant

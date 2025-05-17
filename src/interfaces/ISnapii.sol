@@ -14,6 +14,11 @@ interface ISnapii {
         uint256 deadline
     );
 
+    event TaskEnded(
+        uint256 indexed taskId,
+        uint256 endedAt
+    );
+
     /// Emitted when a user submits points for a task
     event PointsSubmitted(
         uint256 indexed taskId,
@@ -41,6 +46,9 @@ interface ISnapii {
     /// Emitted when a task is closed
     event TaskClosed(uint256 indexed taskId);
 
+    /// emitted when task is completed
+    event TaskCompleted(uint256 indexed taskId);
+
     // ----------- STRUCTS -----------
 
     /// A task posted by a creator
@@ -53,7 +61,7 @@ interface ISnapii {
         uint256 deadline;
         uint256 totalPoints;
         uint256 totalRaiderCount;
-        bool isActive;
+        Completion status;
     }
 
     /// Raider's engagement info
@@ -66,8 +74,15 @@ interface ISnapii {
     // ------------------ ENUMS -----------
     enum Role {
         ADMIN,
-        MODERATOR,
+        SYSTEM,
         CREATOR
+    }
+
+    enum Completion {
+        INACTIVE,
+        ACTIVE,
+        COMPLETED,
+        CLOSED
     }
 
     /// Creator profile info
@@ -156,7 +171,6 @@ interface ISnapii {
 // ------------------ ERRORS ------------------
 
 error InvalidTask();
-error TaskAlreadyActivated();
 error TaskAlreadyClosed();
 error TaskDeadlineNotReached();
 error TaskDeadlinePassed();
@@ -179,4 +193,5 @@ error PaymentFailed();
 // task errors
 error TaskNotActive();
 error TaskNotEnded();
+error TaskAlreadyActivated();
 
