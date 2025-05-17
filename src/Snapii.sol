@@ -1,6 +1,6 @@
 /// SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.0;
 
 import "./interfaces/ISnapii.sol";
 
@@ -25,11 +25,12 @@ contract Snapii is ISnapii{
         _;
     }
 
-    modifier onlyRoles (Role[] memory _roles) {
-        for(uint8 i = 0; i < _roles.length; i ++){
-            if(! roles[msg.sender][_roles[i]]) revert NotAuthorized();
-            _;
-        }
+    modifier onlyCreator (uint256 _taskId){
+        if(msg.sender != tasks[_taskId].creator ||
+            roles[msg.sender][Role.ADMIN] ||
+            roles[msg.sender][Role.SYSTEM]
+        ) revert NotAuthorized();
+        _;
     }
 
     constructor () {
@@ -37,7 +38,7 @@ contract Snapii is ISnapii{
     }
 
 
-    //////////////////////////////////////////////////////////////////// @title A title that should describe the contract/interface
+    //////////////////////////////////////////////////////////////////// 
     /// Common Functions
     ////////////////////////////////////////////////////////////////////
 
@@ -66,7 +67,9 @@ contract Snapii is ISnapii{
     function createTask(
         string memory _metadata,
         uint256 _deadline
-    ) external payable returns (uint256 taskId){
+    ) external payable returns (uint256 _taskId){
+        tasksCount ++;
+
         tasks[tasksCount] = Task({
             creator: msg.sender,
             metadata: _metadata,
@@ -76,10 +79,8 @@ contract Snapii is ISnapii{
             deadline: _deadline,
             totalPoints: 0,
             totalRaiderCount: 0,
-            isActive: false
+            status: Completion.INACTIVE
         });
-
-        tasksCount ++;
 
         emit TaskCreated(
             tasksCount,
@@ -88,6 +89,8 @@ contract Snapii is ISnapii{
             block.timestamp,
             _deadline
         );
+
+        return _taskId;
     }
 
     function endTask(uint256 _taskId) external onlyRole(Role.CREATOR){
@@ -99,20 +102,32 @@ contract Snapii is ISnapii{
         emit TaskEnded(_taskId, block.timestamp);
     }
 
-    function deleteTask(uint256 _taskId) external onlyRoles([Role.CREATOR, Role.SYSTEM, Role.ADMIN]) {
+    function deleteTask(uint256 _taskId) external onlyCreator(_taskId) {
         Task storage task = tasks[_taskId];
 
         if(task.status == Completion.ACTIVE) revert TaskAlreadyActivated();
         task.closedAt = block.timestamp;
+
+        _refundCreator(task.creator, task.rewardPool);
         
         emit TaskClosed(_taskId);
+    }
+
+    function flagRaider(
+        uint256 _taskId,
+        address _raider
+    ) external onlyCreator(_taskId) {
+        Raider storage raider = raiders[_taskId][_raider];
+
+        if(raider.isFlagged) revert DuplicateEntry();
+        raider.isFlagged = true;
     }
 
     ////////////////////////////////////////////////////////////////////
     /// Raiders Functions
     ////////////////////////////////////////////////////////////////////
 
-    function claimRewards (uint256 _taskId) external {
+    function claimReward(uint256 _taskId) external {
         Task memory task = tasks[_taskId];
         
         if(raiders[_taskId][msg.sender].isFlagged) revert RaiderDisqualified();
@@ -166,17 +181,12 @@ contract Snapii is ISnapii{
         }
     }
 
-    /// @notice Refund task creator when task requirement is not met
-    /// @dev Fails if deadline is not reached and task is not yet active
-    /// @param _taskId uint256
-    function refundCreator(uint256 _taskId) external {
-        Task memory task = tasks[_taskId];
-
-        if(task.deadline > block.timestamp) revert TaskNotEnded();
-        if(task.status != Completion.CLOSED) revert TaskNotEnded();
-
-        (bool success,) = payable(task.creator).call{value: task.rewardPool}("");
-        if(!success) revert PaymentFailed();
+    function submitPoints(
+        uint256 _taskId,
+        address _raider,
+        uint256 _points
+    ) external {
+        raiders[_taskId][_raider].points += _points;
     }
 
     ////////////////////////////////////////////////////////////////////
@@ -187,19 +197,30 @@ contract Snapii is ISnapii{
         return raiders[_taskId][_raider];
     }
 
-    function getCreatorProfile(address _creator) external returns (Creator memory){
+    function getCreatorProfile(address _creator) external view returns (Creator memory){
         return creators[_creator];
     }
 
-    function getAverageRewardPerPoint (uint256 _taskId) external returns (uint256){
-        uint rewardPerPoint = _calculateRewardPerPoint(_taskId);
+    function calculateReward (uint256 _taskId, address _raider) external view returns (uint256){
+        uint256 rewardPerPoint = _calculateRewardPerPoint(_taskId);
+        uint256 raiderPoints = raiders[_taskId][_raider].points;
+        uint256 expectedRewards = rewardPerPoint * raiderPoints;
+        return expectedRewards;
+    }
+
+    function getTask(uint256 _taskId) external view returns (Task memory){
+        return tasks[_taskId];
+    }
+
+    function totalTasks() external view returns (uint256){
+        return tasksCount;
     }
 
     ////////////////////////////////////////////////////////////////////
     /// Internal Functions
     ////////////////////////////////////////////////////////////////////
 
-    function _activateTask (uint256 _taskId) internal {
+    function _activateTask (uint256 _taskId) internal view {
         Task memory task = tasks[_taskId];
         if(task.status == Completion.ACTIVE) revert TaskAlreadyActivated();
 
@@ -208,10 +229,19 @@ contract Snapii is ISnapii{
         }
     }
 
-    function _calculateRewardPerPoint (uint256 _taskId) internal returns (uint256){
+    function _calculateRewardPerPoint (uint256 _taskId) internal view returns (uint256){
         uint256 totalReward = tasks[_taskId].rewardPool;
         uint256 totalPointsEarned = tasks[_taskId].totalPoints;
 
         return totalReward / totalPointsEarned;
+    }
+
+    /// @notice Refund task creator when task requirement is not met
+    /// @dev Fails if deadline is not reached and task is not yet active
+    /// @param _creator address
+    /// @param _amount uint256
+    function _refundCreator(address _creator, uint256 _amount) internal {
+        (bool success,) = payable(_creator).call{value: _amount}("");
+        if(!success) revert PaymentFailed();
     }
 }

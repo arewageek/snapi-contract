@@ -101,7 +101,7 @@ interface ISnapii {
     /// -------------------------
 
     /// Create new account
-    function createAccount(Role _role, address _account) external;
+    function registerCreator() external;
 
     /// -------------------------
     /// Creator Functions
@@ -109,8 +109,9 @@ interface ISnapii {
 
     /// Create a new engagement task
     function createTask(
-        string memory _taskMetadata
-    ) external payable returns (uint256 taskId);
+        string memory _metadata,
+        uint256 _deadline
+    ) external payable returns (uint256 _taskId);
 
     /// -------------------------
     /// Raider Functions
@@ -127,40 +128,39 @@ interface ISnapii {
     /// -------------------------
 
     /// Get raider info for specific task
-    function getRaiderInfo(uint256 taskId, address raider) external view returns (Raider memory);
+    function getRaiderInfo(uint256 _taskId, address raider) external view returns (Raider memory);
 
 
 
     /// Submit engagement points (from backend/oracle)
     function submitPoints(
-        uint256 taskId,
-        address raider,
-        uint256 points
+        uint256 _taskId,
+        address _raider,
+        uint256 _points
     ) external;
 
     /// Flag a raider for low-quality engagement or rule violation
     function flagRaider(
-        uint256 taskId,
-        address raider,
-        string calldata reason
+        uint256 _taskId,
+        address _raider
     ) external;
 
     /// Claim reward after task ends (if eligible)
-    function claimReward(uint256 taskId) external;
+    function claimReward(uint256 _taskId) external;
+
+    /// Close the task manually (for completed task)
+    function endTask(uint256 _taskId) external;
 
     /// Close the task manually (only when not active yet)
-    function closeTask(uint256 taskId) external;
-
-    /// Refund leftover funds to creator (if participants don't cross a treshhold)
-    function refund(uint256 taskId) external;
+    function deleteTask(uint256 _taskId) external;
 
     // ----------- VIEW FUNCTIONS -----------
 
     /// Get basic info about a task
-    function getTask(uint256 taskId) external view returns (Task memory);
+    function getTask(uint256 _taskId) external view returns (Task memory);
 
     /// Calculate reward share for a raider (before claiming)
-    function calculateReward(uint256 taskId, address raider) external view returns (uint256);
+    function calculateReward(uint256 _taskId, address raider) external view returns (uint256);
 
     /// Get total number of tasks created
     function totalTasks() external view returns (uint256);
