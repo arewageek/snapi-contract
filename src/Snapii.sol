@@ -27,7 +27,7 @@ contract Snapii is ISnapii{
 
     modifier onlyRoles (Role[] memory _roles) {
         for(uint8 i = 0; i < _roles.length; i ++){
-            if(roles[msg.sender][_roles[i]]) revert NotAuthorized();
+            if(! roles[msg.sender][_roles[i]]) revert NotAuthorized();
             _;
         }
     }
@@ -41,22 +41,27 @@ contract Snapii is ISnapii{
     /// Common Functions
     ////////////////////////////////////////////////////////////////////
 
-    function createAccount(Role _role, address _account) external {
-        if(roles[msg.sender][Role.ADMIN] && _role == Role.ADMIN) revert NotAuthorized();
-        if(creators[_account].account == address(0)) revert DuplicateEntry();
-
-        creators[_account] = Creator({
-            account: _account,
-            tasksCreated: 0,
-            totalAmountPaid: 0,
-            isFlagged: false
-        });
-        roles[_account][_role] = true;
-    }
 
     ////////////////////////////////////////////////////////////////////
     /// Creator Functions
     ////////////////////////////////////////////////////////////////////
+
+    /// @notice Register a new creator account
+    /// @dev fails if creator already exists
+    function registerCreator() external {
+        if(creators[msg.sender].account != address(0)) revert DuplicateEntry();
+
+        creators[msg.sender] = Creator({
+            account: msg.sender,
+            tasksCreated: 0,
+            successfulTasks: 0,
+            totalAmountPaid: 0,
+            isFlagged: false
+        });
+        roles[msg.sender][Role.CREATOR] = true;
+
+        emit CreatorRegistered(msg.sender);
+    }
 
     function createTask(
         string memory _metadata,
@@ -66,11 +71,23 @@ contract Snapii is ISnapii{
             creator: msg.sender,
             metadata: _metadata,
             rewardPool: msg.value,
+            createdAt: block.timestamp,
+            closedAt: 0,
             deadline: _deadline,
             totalPoints: 0,
             totalRaiderCount: 0,
             isActive: false
         });
+
+        tasksCount ++;
+
+        emit TaskCreated(
+            tasksCount,
+            msg.sender,
+            msg.value,
+            block.timestamp,
+            _deadline
+        );
     }
 
     ////////////////////////////////////////////////////////////////////
@@ -106,11 +123,24 @@ contract Snapii is ISnapii{
         }
     }
 
+    /// @notice Refund task creator when task requirement is not met
+    /// @dev Fails if deadline is not reached and task is not yet active
+    /// @param _taskId uint256
+    function refundCreator(uint256 _taskId) external {
+        Task memory task = tasks[_taskId];
+
+        if(task.deadline > block.timestamp) revert TaskNotEnded();
+        if(task.isActive) revert TaskNotActive();
+
+        (bool success,) = payable(task.creator).call{value: task.rewardPool}("");
+        if(!success) revert PaymentFailed();
+    }
+
     ////////////////////////////////////////////////////////////////////
     /// Public Functions
     ////////////////////////////////////////////////////////////////////
 
-    function getRaiderInfo(uint256 _taskId, address _raider) external returns (Raider memory){
+    function getRaiderInfo(uint256 _taskId, address _raider) external view returns (Raider memory){
         return raiders[_taskId][_raider];
     }
 
@@ -119,22 +149,43 @@ contract Snapii is ISnapii{
     }
 
     function getAverageRewardPerPoint (uint256 _taskId) external returns (uint256){
-        uint256 totalReward = tasks[_taskId].rewardPool;
-        uint256 totalPointsEarned = tasks[_taskId].totalPoints;
+        uint rewardPerPoint = _calculateRewardPerPoint(_taskId);
+    }
 
-        return totalReward / totalPointsEarned;
+    function claimRewards (uint256 _taskId) external {
+        Task memory task = tasks[_taskId];
+        
+        if(block.timestamp < task.deadline) revert TaskNotEnded();
+        if(! task.isActive) revert TaskNotActive();
+        
+        uint256 rewardPerPoint = _calculateRewardPerPoint(_taskId);
+        uint256 ponitsEarned = raiders[_taskId][msg.sender].points;
+        uint256 amount = ponitsEarned * rewardPerPoint;
+
+        if(ponitsEarned <= 0) revert NoPointsToClaim();
+        (bool success,) = payable(msg.sender).call{value: amount}("");
+        if(!success) revert PaymentFailed();
+
+        emit RewardClaimed(_taskId, msg.sender, amount);
     }
 
     ////////////////////////////////////////////////////////////////////
     /// Internal Functions
     ////////////////////////////////////////////////////////////////////
 
-    function _activateTask (uint256 _taskId) external {
+    function _activateTask (uint256 _taskId) internal {
         Task memory task = tasks[_taskId];
         require(!task.isActive, "TaskAlreadyActive");
 
         if(task.totalRaiderCount >= minimumParticipantsCount){
             task.isActive = true;
         }
+    }
+
+    function _calculateRewardPerPoint (uint256 _taskId) internal returns (uint256){
+        uint256 totalReward = tasks[_taskId].rewardPool;
+        uint256 totalPointsEarned = tasks[_taskId].totalPoints;
+
+        return totalReward / totalPointsEarned;
     }
 }

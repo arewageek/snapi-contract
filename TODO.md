@@ -8,6 +8,7 @@
 - Create account
 - Get refund when min-treshhold is not achieved
 - Disqualify a raider
+- // Register creator account
 
 ## For Raiders
 
@@ -18,7 +19,7 @@
 - Register task participants
 - Reward task participants
 - Whitelist eligible participants
-- Refund creator when no participant
+- // Refund creator when no participant
 - // Activate task only when participants cross a minimum treshhold
 - // Flag task participant
 - // Update minimum task participants
@@ -30,5 +31,3 @@
 - // Calculate average reward per point earned
 
 ## Common Functions
-
-- // Create account

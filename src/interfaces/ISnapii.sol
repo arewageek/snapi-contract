@@ -10,8 +10,8 @@ interface ISnapii {
         uint256 indexed taskId,
         address indexed creator,
         uint256 rewardPool,
-        uint256 deadline,
-        string contentLink
+        uint256 createdAt,
+        uint256 deadline
     );
 
     /// Emitted when a user submits points for a task
@@ -35,6 +35,9 @@ interface ISnapii {
         uint256 amount
     );
 
+    /// Emitted when new creator is registered
+    event CreatorRegistered(address indexed creator);
+
     /// Emitted when a task is closed
     event TaskClosed(uint256 indexed taskId);
 
@@ -45,6 +48,8 @@ interface ISnapii {
         address creator;
         string metadata;
         uint256 rewardPool;
+        uint256 createdAt;
+        uint256 closedAt;
         uint256 deadline;
         uint256 totalPoints;
         uint256 totalRaiderCount;
@@ -69,6 +74,7 @@ interface ISnapii {
     struct Creator {
         address account;
         uint8 tasksCreated;
+        uint8 successfulTasks;
         uint256 totalAmountPaid;
         bool isFlagged;
     }
@@ -149,10 +155,8 @@ interface ISnapii {
 
 // ------------------ ERRORS ------------------
 
-error NotAuthorized();
-error NotTaskCreator();
 error InvalidTask();
-error TaskNotActive();
+error TaskAlreadyActivated();
 error TaskAlreadyClosed();
 error TaskDeadlineNotReached();
 error TaskDeadlinePassed();
@@ -165,5 +169,14 @@ error InvalidETHDeposit();
 error UnauthorizedSubmitter();
 error ZeroPointsNotAllowed();
 
+// authorization errors
+error NotAuthorized();
+error NotTaskCreator();
 // duplicate entry errors
 error DuplicateEntry();
+// transaction errors
+error PaymentFailed();
+// task errors
+error TaskNotActive();
+error TaskNotEnded();
+
