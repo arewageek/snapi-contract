@@ -1,10 +1,11 @@
 /// SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.24;
 
 import "./interfaces/ISnapii.sol";
+import "lib/openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
 
-contract Snapii is ISnapii{
+contract Snapii is ISnapii, ReentrancyGuard{
     uint256 public minimumParticipantsCount = 100;
 
     uint256 tasksCount = 1;
@@ -102,7 +103,7 @@ contract Snapii is ISnapii{
         emit TaskEnded(_taskId, block.timestamp);
     }
 
-    function deleteTask(uint256 _taskId) external onlyCreator(_taskId) {
+    function deleteTask(uint256 _taskId) external onlyCreator(_taskId) nonReentrant() {
         Task storage task = tasks[_taskId];
 
         if(task.status == Completion.ACTIVE) revert TaskAlreadyActivated();
@@ -127,7 +128,7 @@ contract Snapii is ISnapii{
     /// Raiders Functions
     ////////////////////////////////////////////////////////////////////
 
-    function claimReward(uint256 _taskId) external {
+    function claimReward(uint256 _taskId) external nonReentrant() {
         Task memory task = tasks[_taskId];
         
         if(raiders[_taskId][msg.sender].isFlagged) revert RaiderDisqualified();
